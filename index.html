@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Downloader — Universal Media Downloader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0c0c0e;
+      --surface: #131316;
+      --border: #222228;
+      --accent: #e8ff47;
+      --accent2: #ff4747;
+      --text: #f0f0f0;
+      --muted: #55555f;
+      --radius: 14px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 60px 20px 40px;
+    }
+
+    /* ─── Header ─── */
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 5px 14px;
+      margin-bottom: 20px;
+      letter-spacing: .04em;
+    }
+
+    .badge span { color: var(--accent); }
+
+    h1 {
+      font-size: clamp(2.4rem, 8vw, 3.8rem);
+      font-weight: 800;
+      letter-spacing: -.02em;
+      line-height: 1;
+    }
+
+    h1 em {
+      font-style: normal;
+      color: var(--accent);
+    }
+
+    .sub {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: .95rem;
+      font-weight: 400;
+    }
+
+    /* ─── Card ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 540px;
+    }
+
+    /* ─── Platforms ─── */
+    .platforms {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 28px;
+    }
+
+    .chip {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 5px 11px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      letter-spacing: .03em;
+      user-select: none;
+    }
+
+    /* ─── Form ─── */
+    .field {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .field-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+      font-size: 15px;
+    }
+
+    input[type="text"], select {
+      width: 100%;
+      padding: 15px 16px 15px 44px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13.5px;
+      transition: border-color .2s;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type="text"]::placeholder { color: var(--muted); }
+
+    input[type="text"]:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    select {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2355555f' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      padding-left: 44px;
+      padding-right: 40px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 16px;
+      margin-top: 4px;
+      background: var(--accent);
+      color: #0c0c0e;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      cursor: pointer;
+      transition: opacity .15s, transform .12s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:hover { opacity: .9; }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    /* ─── Progress ─── */
+    .progress-wrap {
+      margin-top: 20px;
+      display: none;
+    }
+
+    .progress-track {
+      height: 3px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width .4s ease;
+    }
+
+    .progress-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ─── Result ─── */
+    .result {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .result.show { display: flex; }
+
+    .result.success {
+      background: rgba(232, 255, 71, .07);
+      border: 1px solid rgba(232, 255, 71, .25);
+      color: var(--accent);
+    }
+
+    .result.error {
+      background: rgba(255, 71, 71, .07);
+      border: 1px solid rgba(255, 71, 71, .25);
+      color: var(--accent2);
+    }
+
+    .result.info {
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .result-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .result-text { line-height: 1.5; font-family: 'DM Mono', monospace; font-size: 12px; }
+    .result-text strong { font-family: 'Syne', sans-serif; font-size: 13px; display: block; margin-bottom: 3px; }
+
+    /* ─── Info box ─── */
+    .info-box {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+    }
+
+    .info-box p {
+      font-family: 'DM Mono', monospace;
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .info-box p + p { margin-top: 6px; }
+
+    .info-box a { color: var(--accent); text-decoration: none; }
+    .info-box a:hover { text-decoration: underline; }
+
+    /* ─── Footer ─── */
+    footer {
+      margin-top: 40px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.8;
+    }
+
+    footer a { color: var(--muted); text-decoration: underline; }
+
+    /* ─── Spinner ─── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,0,0,.2);
+      border-top-color: #0c0c0e;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+
+    /* ─── Separator ─── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 24px 0;
+    }
+
+    /* ─── History ─── */
+    .history-title {
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 11.5px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      gap: 12px;
+    }
+
+    .history-item .h-url {
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    .history-item .h-status {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 100px;
+      flex-shrink: 0;
+    }
+
+    .h-status.ok { background: rgba(232,255,71,.12); color: var(--accent); }
+    .h-status.fail { background: rgba(255,71,71,.12); color: var(--accent2); }
+
+    .history-empty {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      padding: 16px 0;
+    }
+
+    /* ─── Install steps ─── */
+    .steps {
+      counter-reset: step;
+    }
+
+    .step {
+      display: flex;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .step:last-child { border-bottom: none; }
+
+    .step-num {
+      counter-increment: step;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .step-num::before { content: counter(step); }
+
+    .step-body { flex: 1; }
+
+    .step-body strong {
+      display: block;
+      font-size: 13.5px;
+      margin-bottom: 4px;
+    }
+
+    .step-body p {
+      font-family: 'DM Mono', monospace;
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    code {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 5px;
+      font-size: 11px;
+    }
+
+    /* ─── Tabs ─── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--muted);
+      font-family: 'Syne', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+      text-align: center;
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    @media (max-width: 500px) {
+      .card { padding: 28px 20px; }
+      h1 { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge"><span>●</span> v2.0 — Powered by yt-dlp</div>
+    <h1>Universal<br><em>Downloader</em></h1>
+    <p class="sub">Download video & audio dari berbagai platform</p>
+  </header>
+
+  <div class="card">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('download', this)">Download</button>
+      <button class="tab" onclick="switchTab('history', this)">History</button>
+      <button class="tab" onclick="switchTab('setup', this)">Setup</button>
+    </div>
+
+    <!-- TAB: Download -->
+    <div id="tab-download" class="tab-content active">
+
+      <div class="platforms">
+        <div class="chip">YouTube</div>
+        <div class="chip">Instagram</div>
+        <div class="chip">TikTok</div>
+        <div class="chip">Twitter / X</div>
+        <div class="chip">Facebook</div>
+        <div class="chip">Reddit</div>
+        <div class="chip">SoundCloud</div>
+        <div class="chip">Twitch</div>
+        <div class="chip">+ 1000 lainnya</div>
+      </div>
+
+      <div class="field">
+        <span class="field-icon">🔗</span>
+        <input type="text" id="urlInput" placeholder="https://youtube.com/watch?v=..." autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <span class="field-icon">📦</span>
+        <select id="formatSelect">
+          <optgroup label="Video">
+            <option value="best">Video Terbaik (Auto)</option>
+            <option value="1080p">Video 1080p</option>
+            <option value="720p">Video 720p</option>
+            <option value="480p">Video 480p</option>
+            <option value="360p">Video 360p</option>
+          </optgroup>
+          <optgroup label="Audio">
+            <option value="mp3">Audio MP3 (High Quality)</option>
+            <option value="m4a">Audio M4A</option>
+            <option value="opus">Audio Opus</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <button class="btn" id="dlBtn" onclick="startDownload()">
+        <span id="btnIcon">⬇</span>
+        <div class="spinner" id="btnSpinner"></div>
+        <span id="btnText">Download Sekarang</span>
+      </button>
+
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-label">
+          <span id="progressStatus">Memulai...</span>
+          <span id="progressPct">0%</span>
+        </div>
+      </div>
+
+      <div class="result" id="result">
+        <div class="result-icon" id="resultIcon"></div>
+        <div class="result-text" id="resultText"></div>
+      </div>
+
+      <div class="info-box" style="margin-top: 20px;">
+        <p>⚡ Website ini adalah <strong>frontend</strong> untuk yt-dlp yang berjalan di server lokal (Termux/VPS).</p>
+        <p>🖥 Jalankan <code>python3 server.py</code> lalu akses via browser HP/PC di jaringan yang sama.</p>
+        <p>📖 Lihat tab <strong>Setup</strong> untuk panduan instalasi.</p>
+      </div>
+    </div>
+
+    <!-- TAB: History -->
+    <div id="tab-history" class="tab-content">
+      <div class="history-title">Riwayat Download</div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">Belum ada riwayat download.</div>
+      </div>
+      <button class="btn" onclick="clearHistory()" style="margin-top: 16px; background: var(--border); color: var(--muted);">
+        🗑 Hapus Riwayat
+      </button>
+    </div>
+
+    <!-- TAB: Setup -->
+    <div id="tab-setup" class="tab-content">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num"></div>
+          <div class="step-body">
+            <strong>Install Termux (Android)</strong>
+            <p>Download Termux dari <a href="https://f-droid.org/packages/com.termux/" style="color:var(--accent)">F-Droid</a> (bukan Play Store). Update paket dengan <code>pkg update</code></p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"></div>
+          <div class="step-body">
+            <strong>Install Dependencies</strong>
+            <p><code>pkg install python ffmpeg</code><br/>Lalu: <code>pip install yt-dlp</code></p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"></div>
+          <div class="step-body">
+            <strong>Izin Storage</strong>
+            <p>Jalankan <code>termux-setup-storage</code> untuk akses folder Download HP.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"></div>
+          <div class="step-body">
+            <strong>Clone & Jalankan</strong>
+            <p><code>git clone https://github.com/username/repo</code><br/>Lalu: <code>python3 server.py</code></p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"></div>
+          <div class="step-body">
+            <strong>Akses via Browser</strong>
+            <p>Buka <code>http://localhost:5000</code> di HP atau <code>http://&lt;IP_HP&gt;:5000</code> dari PC.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="info-box">
+        <p>🐧 Juga bisa dijalankan di <strong>Linux/VPS</strong> tanpa Termux.</p>
+        <p>🔄 Update yt-dlp: <code>pip install -U yt-dlp</code></p>
+        <p>⚠️ Pastikan <code>ffmpeg</code> terinstall untuk konversi audio.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <p>Universal Downloader — Frontend-only, open source</p>
+    <p>Powered by <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a> · Rate limit: 10 req/menit</p>
+  </footer>
+
+  <script>
+    // ─── Tab switching ───
+    function switchTab(name, el) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      el.classList.add('active');
+      if (name === 'history') renderHistory();
+    }
+
+    // ─── History ───
+    function getHistory() {
+      try { return JSON.parse(localStorage.getItem('dl_history') || '[]'); } catch { return []; }
+    }
+
+    function saveHistory(h) {
+      localStorage.setItem('dl_history', JSON.stringify(h.slice(0, 30)));
+    }
+
+    function addHistory(url, fmt, status) {
+      const h = getHistory();
+      h.unshift({ url, fmt, status, time: Date.now() });
+      saveHistory(h);
+    }
+
+    function clearHistory() {
+      localStorage.removeItem('dl_history');
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const list = document.getElementById('historyList');
+      const h = getHistory();
+      if (!h.length) {
+        list.innerHTML = '<div class="history-empty">Belum ada riwayat download.</div>';
+        return;
+      }
+      list.innerHTML = h.map(item => {
+        const short = item.url.length > 38 ? item.url.slice(0, 38) + '…' : item.url;
+        const badge = item.status === 'ok'
+          ? '<span class="h-status ok">✓ Sukses</span>'
+          : '<span class="h-status fail">✗ Gagal</span>';
+        return `<div class="history-item">
+          <span class="h-url">${short}</span>
+          ${badge}
+        </div>`;
+      }).join('');
+    }
+
+    // ─── UI helpers ───
+    function setResult(type, icon, title, msg) {
+      const el = document.getElementById('result');
+      const ico = document.getElementById('resultIcon');
+      const txt = document.getElementById('resultText');
+      el.className = 'result show ' + type;
+      ico.textContent = icon;
+      txt.innerHTML = `<strong>${title}</strong>${msg}`;
+    }
+
+    function setLoading(on) {
+      const btn = document.getElementById('dlBtn');
+      const icon = document.getElementById('btnIcon');
+      const spinner = document.getElementById('btnSpinner');
+      const text = document.getElementById('btnText');
+      btn.disabled = on;
+      icon.style.display = on ? 'none' : 'inline';
+      spinner.style.display = on ? 'block' : 'none';
+      text.textContent = on ? 'Mendownload...' : 'Download Sekarang';
+    }
+
+    function animateProgress(pct) {
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressPct').textContent = pct + '%';
+    }
+
+    // ─── Main download ───
+    async function startDownload() {
+      const url = document.getElementById('urlInput').value.trim();
+      const fmt = document.getElementById('formatSelect').value;
+
+      if (!url) {
+        setResult('error', '⚠️', 'URL kosong!', 'Masukkan link video terlebih dahulu.');
+        return;
+      }
+
+      if (!isValidUrl(url)) {
+        setResult('error', '⚠️', 'URL tidak valid!', 'Pastikan link dimulai dengan http:// atau https://');
+        return;
+      }
+
+      // Reset UI
+      setLoading(true);
+      document.getElementById('result').className = 'result';
+      const wrap = document.getElementById('progressWrap');
+      wrap.style.display = 'block';
+      animateProgress(10);
+      document.getElementById('progressStatus').textContent = 'Menghubungi server...';
+
+      // Simulasi progress
+      let pct = 10;
+      const prog = setInterval(() => {
+        if (pct < 85) { pct += Math.random() * 8; animateProgress(Math.min(pct, 85)); }
+      }, 600);
+
+      try {
+        const params = new URLSearchParams({ url, format: fmt });
+        const res = await fetch('/download?' + params, { signal: AbortSignal.timeout(310000) });
+
+        clearInterval(prog);
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: 'Server error ' + res.status }));
+          throw new Error(data.error || 'Server error');
+        }
+
+        const data = await res.json();
+
+        animateProgress(100);
+        document.getElementById('progressStatus').textContent = 'Selesai!';
+
+        if (data.success) {
+          setResult('success', '✅', 'Download berhasil!', data.message || 'File tersimpan di folder Download.');
+          addHistory(url, fmt, 'ok');
+        } else {
+          throw new Error(data.error || 'Terjadi kesalahan.');
+        }
+
+      } catch (err) {
+        clearInterval(prog);
+        animateProgress(0);
+        document.getElementById('progressStatus').textContent = 'Gagal.';
+
+        const msg = err.name === 'TimeoutError'
+          ? 'Timeout — download terlalu lama (>5 menit). Coba format yang lebih rendah.'
+          : err.message || 'Tidak dapat terhubung ke server.';
+
+        setResult('error', '❌', 'Download gagal!', msg);
+        addHistory(url, fmt, 'fail');
+      }
+
+      setLoading(false);
+      setTimeout(() => {
+        document.getElementById('progressWrap').style.display = 'none';
+        animateProgress(0);
+      }, 2500);
+    }
+
+    function isValidUrl(str) {
+      try { return ['http:', 'https:'].includes(new URL(str).protocol); }
+      catch { return false; }
+    }
+
+    // Enter key
+    document.getElementById('urlInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') startDownload();
+    });
+
+    // Paste & auto trim
+    document.getElementById('urlInput').addEventListener('paste', () => {
+      setTimeout(() => {
+        document.getElementById('urlInput').value = document.getElementById('urlInput').value.trim();
+      }, 10);
+    });
+  </script>
+</body>
+</html>
