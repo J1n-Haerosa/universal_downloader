@@ -1,0 +1,10 @@
+# Universal Video/Audio Downloader - Python Dependencies
+# Install dengan: pip install -r requirements.txt
+
+flask>=3.0.0
+flask-cors>=4.0.0
+requests>=2.31.0
+
+# Untuk production (opsional):
+# gunicorn>=21.0.0        # WSGI server
+# python-dotenv>=1.0.0   # Load .env file untuk API key

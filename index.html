@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VORTEX — Universal Downloader</title>
+  <meta name="description" content="Download video dan audio dari YouTube, TikTok, Instagram, dan platform lainnya secara gratis." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet" />
+
+  <style>
+    /* =========================================================
+       CSS VARIABLES & RESET
+       ========================================================= */
+    :root {
+      --bg-void:       #060608;
+      --bg-panel:      #0d0d12;
+      --bg-card:       #111118;
+      --bg-card-hover: #16161f;
+      --border-dim:    rgba(255,255,255,0.06);
+      --border-glow:   rgba(0,240,180,0.3);
+      --accent:        #00f0b4;
+      --accent-dim:    rgba(0,240,180,0.12);
+      --accent-glow:   rgba(0,240,180,0.5);
+      --red:           #ff4060;
+      --red-dim:       rgba(255,64,96,0.12);
+      --yellow:        #ffd060;
+      --text-primary:  #eeeef5;
+      --text-secondary:#7878a0;
+      --text-muted:    #3e3e58;
+      --font-display:  'Syne', sans-serif;
+      --font-mono:     'DM Mono', monospace;
+      --radius-sm:     6px;
+      --radius-md:     12px;
+      --radius-lg:     18px;
+      --transition:    all 0.2s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg-void);
+      color: var(--text-primary);
+      font-family: var(--font-display);
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0,240,180,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,240,180,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .bg-orb { position: fixed; border-radius: 50%; filter: blur(100px); pointer-events: none; z-index: 0; }
+    .bg-orb-1 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(0,240,180,0.07) 0%, transparent 70%);
+      top: -200px; left: -200px;
+      animation: orb-drift 18s ease-in-out infinite alternate;
+    }
+    .bg-orb-2 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(100,80,255,0.06) 0%, transparent 70%);
+      bottom: -200px; right: -150px;
+      animation: orb-drift 22s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes orb-drift {
+      from { transform: translate(0,0) scale(1); }
+      to   { transform: translate(40px,30px) scale(1.1); }
+    }
+
+    .wrapper {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 32px 16px 80px;
+    }
+
+    header {
+      width: 100%; max-width: 680px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 56px; padding: 0 4px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 34px; height: 34px; background: var(--accent); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 20px var(--accent-glow); flex-shrink: 0;
+    }
+    .logo-icon svg { width: 18px; height: 18px; }
+    .logo-text { font-size: 18px; font-weight: 800; letter-spacing: 0.1em; color: var(--text-primary); }
+    .logo-sub {
+      font-family: var(--font-mono); font-size: 10px; font-weight: 400;
+      color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 1px;
+    }
+    .status-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--bg-card); border: 1px solid var(--border-dim);
+      border-radius: 100px; padding: 6px 12px;
+      font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); letter-spacing: 0.05em;
+    }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--text-muted); transition: var(--transition);
+    }
+    .status-dot.online  { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .status-dot.offline { background: var(--red); }
+
+    .hero { width: 100%; max-width: 680px; text-align: center; margin-bottom: 40px; }
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--accent-dim); border: 1px solid rgba(0,240,180,0.2);
+      border-radius: 100px; padding: 4px 14px 4px 10px;
+      font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+      letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 20px;
+    }
+    .hero-tag svg { width: 12px; height: 12px; }
+    h1 {
+      font-size: clamp(32px, 6vw, 52px); font-weight: 800;
+      line-height: 1.08; letter-spacing: -0.02em; margin-bottom: 14px;
+    }
+    h1 .accent { color: var(--accent); }
+    .hero-desc {
+      font-family: var(--font-mono); font-size: 13px;
+      color: var(--text-secondary); line-height: 1.7;
+      max-width: 480px; margin: 0 auto;
+    }
+
+    .main-card {
+      width: 100%; max-width: 680px;
+      background: var(--bg-panel); border: 1px solid var(--border-dim);
+      border-radius: var(--radius-lg); padding: 28px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 40px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .input-group { display: flex; gap: 10px; align-items: stretch; margin-bottom: 24px; }
+    .input-wrap { flex: 1; position: relative; }
+    .url-icon {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); pointer-events: none; transition: var(--transition);
+    }
+    #url-input {
+      width: 100%; background: var(--bg-card); border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md); padding: 14px 14px 14px 42px;
+      color: var(--text-primary); font-family: var(--font-mono); font-size: 13px;
+      outline: none; transition: var(--transition); height: 52px;
+    }
+    #url-input::placeholder { color: var(--text-muted); }
+    #url-input:focus {
+      border-color: var(--border-glow); background: var(--bg-card-hover);
+      box-shadow: 0 0 0 3px rgba(0,240,180,0.08), inset 0 0 0 1px rgba(0,240,180,0.1);
+    }
+    .input-wrap:focus-within .url-icon { color: var(--accent); }
+
+    .paste-btn {
+      height: 52px; padding: 0 16px;
+      background: var(--bg-card); border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md); color: var(--text-secondary);
+      font-family: var(--font-mono); font-size: 12px; cursor: pointer;
+      white-space: nowrap; transition: var(--transition);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .paste-btn:hover { background: var(--bg-card-hover); border-color: rgba(255,255,255,0.12); color: var(--text-primary); }
+
+    .section-label {
+      font-family: var(--font-mono); font-size: 10px; color: var(--text-muted);
+      letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 12px;
+    }
+    .format-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 24px; }
+    .format-btn {
+      background: var(--bg-card); border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md); padding: 12px 8px; cursor: pointer;
+      text-align: center; transition: var(--transition); position: relative; overflow: hidden;
+    }
+    .format-btn::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, transparent, rgba(0,240,180,0.05));
+      opacity: 0; transition: var(--transition);
+    }
+    .format-btn:hover::before { opacity: 1; }
+    .format-btn:hover { border-color: rgba(255,255,255,0.14); background: var(--bg-card-hover); transform: translateY(-1px); }
+    .format-btn.active {
+      border-color: var(--border-glow); background: var(--accent-dim);
+      box-shadow: 0 0 16px rgba(0,240,180,0.1), inset 0 1px 0 rgba(0,240,180,0.1);
+    }
+    .format-btn.active::before { opacity: 1; }
+    .format-icon { font-size: 18px; margin-bottom: 6px; display: block; }
+    .format-name { display: block; font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--text-primary); letter-spacing: 0.04em; transition: var(--transition); }
+    .format-btn.active .format-name { color: var(--accent); }
+    .format-quality { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+    .divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border-dim), transparent); margin: 0 0 24px; }
+
+    #download-btn {
+      width: 100%; background: var(--accent); border: none; border-radius: var(--radius-md);
+      padding: 16px 24px; color: var(--bg-void);
+      font-family: var(--font-display); font-size: 15px; font-weight: 700;
+      letter-spacing: 0.03em; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: var(--transition); position: relative; overflow: hidden;
+      box-shadow: 0 0 24px rgba(0,240,180,0.25), 0 4px 16px rgba(0,0,0,0.3);
+    }
+    #download-btn::before {
+      content: ''; position: absolute;
+      top: -50%; left: -60%; width: 60%; height: 200%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transform: skewX(-20deg); transition: left 0.6s ease;
+    }
+    #download-btn:hover::before { left: 120%; }
+    #download-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 36px rgba(0,240,180,0.4), 0 8px 24px rgba(0,0,0,0.3); }
+    #download-btn:active:not(:disabled) { transform: translateY(0); }
+    #download-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+    .btn-spinner {
+      width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.3);
+      border-top-color: var(--bg-void); border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #download-btn.loading .btn-spinner { display: block; }
+    #download-btn.loading .btn-icon { display: none; }
+
+    .progress-wrap { margin-top: 16px; display: none; }
+    .progress-wrap.visible { display: block; animation: fade-in 0.3s ease; }
+    .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .progress-label { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+    .progress-pct { font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
+    .progress-track { height: 4px; background: var(--bg-card); border-radius: 2px; overflow: hidden; }
+    .progress-fill {
+      height: 100%; background: linear-gradient(90deg, var(--accent), #00c8ff);
+      border-radius: 2px; width: 0%; transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    #result-card {
+      margin-top: 20px; background: var(--bg-card); border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md); padding: 16px; display: none;
+      animation: slide-up 0.4s cubic-bezier(0.4,0,0.2,1);
+    }
+    #result-card.visible { display: flex; gap: 14px; align-items: flex-start; }
+    .result-thumb { width: 80px; height: 52px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; background: var(--bg-panel); }
+    .result-thumb-placeholder {
+      width: 80px; height: 52px; border-radius: var(--radius-sm);
+      background: var(--bg-panel); border: 1px solid var(--border-dim);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; color: var(--text-muted);
+    }
+    .result-meta { flex: 1; min-width: 0; }
+    .result-title { font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+    .result-info { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap; }
+    .result-info span { display: flex; align-items: center; gap: 4px; }
+
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      display: flex; flex-direction: column-reverse; gap: 10px; pointer-events: none;
+    }
+    .toast {
+      pointer-events: all; background: var(--bg-panel); border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md); padding: 13px 16px;
+      min-width: 260px; max-width: 340px;
+      display: flex; align-items: flex-start; gap: 10px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      animation: toast-in 0.35s cubic-bezier(0.4,0,0.2,1); cursor: pointer;
+    }
+    .toast.removing { animation: toast-out 0.3s ease forwards; }
+    .toast-icon { flex-shrink: 0; margin-top: 1px; }
+    .toast-body { flex: 1; }
+    .toast-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+    .toast-msg { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
+    .toast.success { border-color: rgba(0,240,180,0.25); }
+    .toast.error   { border-color: rgba(255,64,96,0.25); }
+    .toast.warning { border-color: rgba(255,208,96,0.25); }
+    @keyframes toast-in  { from { opacity: 0; transform: translateX(20px) scale(0.95); } to { opacity: 1; transform: translateX(0) scale(1); } }
+    @keyframes toast-out { from { opacity: 1; transform: translateX(0) scale(1); } to { opacity: 0; transform: translateX(20px) scale(0.9); } }
+
+    .platforms { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 32px; }
+    .platform-chip {
+      background: var(--bg-card); border: 1px solid var(--border-dim);
+      border-radius: 100px; padding: 5px 14px;
+      font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); letter-spacing: 0.05em;
+    }
+
+    footer { margin-top: 40px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.8; }
+    footer a { color: var(--text-secondary); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 520px) {
+      .main-card { padding: 20px 16px; }
+      .format-grid { grid-template-columns: repeat(2, 1fr); }
+      .input-group { flex-direction: column; }
+      .paste-btn { height: 44px; justify-content: center; }
+      h1 { font-size: 28px; }
+      .hero { margin-bottom: 28px; }
+      header { margin-bottom: 32px; }
+      #toast-container { left: 16px; right: 16px; bottom: 16px; }
+      .toast { min-width: unset; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div id="toast-container"></div>
+
+  <div class="wrapper">
+
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#060608" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">VORTEX</div>
+          <div class="logo-sub">Universal Downloader</div>
+        </div>
+      </div>
+      <div class="status-badge" id="status-badge">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">checking...</span>
+      </div>
+    </header>
+
+    <div class="hero">
+      <div class="hero-tag">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/>
+        </svg>
+        No watermarks. No signup. Free.
+      </div>
+      <h1>Download <span class="accent">Anything.</span><br>From Anywhere.</h1>
+      <p class="hero-desc">Tempel URL video dari YouTube, TikTok, Instagram,<br>atau platform lain. Pilih format. Klik download.</p>
+    </div>
+
+    <div class="main-card">
+
+      <div class="input-group">
+        <div class="input-wrap">
+          <svg class="url-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          <input type="url" id="url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false" />
+        </div>
+        <button class="paste-btn" id="paste-btn" title="Tempel dari clipboard">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Tempel
+        </button>
+      </div>
+
+      <p class="section-label">— pilih format</p>
+      <div class="format-grid" id="format-grid">
+        <button class="format-btn" data-format="mp3">
+          <span class="format-icon">🎵</span>
+          <span class="format-name">MP3</span>
+          <span class="format-quality">Audio Only</span>
+        </button>
+        <button class="format-btn active" data-format="mp4-720p">
+          <span class="format-icon">📹</span>
+          <span class="format-name">MP4</span>
+          <span class="format-quality">720p HD</span>
+        </button>
+        <button class="format-btn" data-format="mp4-1080p">
+          <span class="format-icon">🎬</span>
+          <span class="format-name">MP4</span>
+          <span class="format-quality">1080p FHD</span>
+        </button>
+        <button class="format-btn" data-format="mp4-360p">
+          <span class="format-icon">📱</span>
+          <span class="format-name">MP4</span>
+          <span class="format-quality">360p Mobile</span>
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <button id="download-btn">
+        <div class="btn-spinner"></div>
+        <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download Sekarang
+      </button>
+
+      <div class="progress-wrap" id="progress-wrap">
+        <div class="progress-header">
+          <span class="progress-label" id="progress-label">Menghubungi server...</span>
+          <span class="progress-pct" id="progress-pct">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+      </div>
+
+      <div id="result-card">
+        <div class="result-thumb-placeholder" id="thumb-placeholder">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="2"/><path d="m9 9 6 6M15 9l-6 6"/>
+          </svg>
+        </div>
+        <img id="result-thumb" class="result-thumb" style="display:none;" alt="thumbnail" />
+        <div class="result-meta">
+          <div class="result-title" id="result-title">—</div>
+          <div class="result-info">
+            <span id="result-format">—</span>
+            <span id="result-duration">—</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="platforms">
+      <span class="platform-chip">YouTube</span>
+      <span class="platform-chip">TikTok</span>
+      <span class="platform-chip">Instagram</span>
+      <span class="platform-chip">Twitter / X</span>
+      <span class="platform-chip">Facebook</span>
+      <span class="platform-chip">Vimeo</span>
+      <span class="platform-chip">Dailymotion</span>
+    </div>
+
+    <footer>
+      <p>Hanya untuk penggunaan pribadi. Hormati hak cipta konten creator.</p>
+      <p style="margin-top:4px;">VORTEX v1.0 · FastAPI + yt-dlp</p>
+    </footer>
+
+  </div>
+
+  <script>
+    // =========================================================
+    // KONFIGURASI
+    // =========================================================
+    /**
+     * BASE URL backend FastAPI.
+     * - Development (lokal): "" (string kosong = same origin)
+     *   → Frontend & backend di-serve bersama dari http://localhost:5000
+     * - Jika frontend di file:// atau port berbeda, pakai: "http://localhost:5000"
+     */
+    const API_BASE = "";  // Kosong = same origin (direkomendasikan)
+
+    // =========================================================
+    // STATE
+    // =========================================================
+    let selectedFormat = "mp4-720p";
+    let isLoading = false;
+
+    // =========================================================
+    // DOM ELEMENTS
+    // =========================================================
+    const urlInput       = document.getElementById("url-input");
+    const downloadBtn    = document.getElementById("download-btn");
+    const pasteBtn       = document.getElementById("paste-btn");
+    const progressWrap   = document.getElementById("progress-wrap");
+    const progressFill   = document.getElementById("progress-fill");
+    const progressLabel  = document.getElementById("progress-label");
+    const progressPct    = document.getElementById("progress-pct");
+    const resultCard     = document.getElementById("result-card");
+    const resultTitle    = document.getElementById("result-title");
+    const resultFormat   = document.getElementById("result-format");
+    const resultDuration = document.getElementById("result-duration");
+    const resultThumb    = document.getElementById("result-thumb");
+    const thumbPlaceholder = document.getElementById("thumb-placeholder");
+    const statusDot      = document.getElementById("status-dot");
+    const statusText     = document.getElementById("status-text");
+
+    // =========================================================
+    // HEALTH CHECK — Memanggil /ping di backend
+    // =========================================================
+    async function checkServerHealth() {
+      try {
+        const res = await fetch(`${API_BASE}/ping`, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const data = await res.json();
+          statusDot.className  = "status-dot online";
+          statusText.textContent = data.demo_mode ? "demo mode" : "online";
+        } else {
+          throw new Error(`HTTP ${res.status}`);
+        }
+      } catch (err) {
+        statusDot.className  = "status-dot offline";
+        statusText.textContent = "offline";
+      }
+    }
+
+    checkServerHealth();
+
+    // =========================================================
+    // FORMAT SELECTOR
+    // =========================================================
+    document.getElementById("format-grid").addEventListener("click", (e) => {
+      const btn = e.target.closest(".format-btn");
+      if (!btn) return;
+      document.querySelectorAll(".format-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      selectedFormat = btn.dataset.format;
+    });
+
+    // =========================================================
+    // PASTE BUTTON
+    // =========================================================
+    pasteBtn.addEventListener("click", async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text.startsWith("http")) {
+          urlInput.value = text.trim();
+          urlInput.focus();
+          showToast("success", "URL ditempel!", "Link berhasil diambil dari clipboard.");
+        } else {
+          showToast("warning", "Clipboard kosong", "Tidak ada URL yang valid di clipboard.");
+        }
+      } catch {
+        showToast("error", "Akses Ditolak", "Izinkan akses clipboard di browser Anda.");
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "v" && document.activeElement !== urlInput) {
+        urlInput.focus();
+      }
+    });
+
+    // =========================================================
+    // PROGRESS SIMULATION
+    // =========================================================
+    let progressTimer = null;
+
+    function startProgress() {
+      progressWrap.classList.add("visible");
+      progressFill.style.width = "0%";
+      progressPct.textContent  = "0%";
+
+      const steps = [
+        { pct: 15, label: "Memvalidasi URL...",          delay: 300  },
+        { pct: 35, label: "Menghubungi backend...",       delay: 700  },
+        { pct: 60, label: "Memproses link video...",      delay: 1500 },
+        { pct: 82, label: "Menyiapkan stream token...",   delay: 2200 },
+        { pct: 95, label: "Hampir selesai...",            delay: 3000 },
+      ];
+
+      steps.forEach(({ pct, label, delay }) => {
+        progressTimer = setTimeout(() => {
+          progressFill.style.width  = `${pct}%`;
+          progressPct.textContent   = `${pct}%`;
+          progressLabel.textContent = label;
+        }, delay);
+      });
+    }
+
+    function finishProgress(success = true) {
+      clearTimeout(progressTimer);
+      progressFill.style.width  = "100%";
+      progressPct.textContent   = "100%";
+      progressLabel.textContent = success ? "Berhasil! ✓" : "Proses dihentikan.";
+      if (!success) {
+        progressFill.style.background = "linear-gradient(90deg, var(--red), #ff8060)";
+      }
+      setTimeout(() => {
+        progressWrap.classList.remove("visible");
+        progressFill.style.width      = "0%";
+        progressFill.style.background = "";
+      }, 1800);
+    }
+
+    // =========================================================
+    // CLIENT-SIDE URL VALIDATION
+    // =========================================================
+    const SUPPORTED_DOMAINS = [
+      "youtube.com", "youtu.be",
+      "tiktok.com",
+      "instagram.com",
+      "twitter.com", "x.com",
+      "facebook.com",
+      "vimeo.com",
+      "dailymotion.com",
+    ];
+
+    function isValidClientUrl(url) {
+      try {
+        const u = new URL(url);
+        if (!["http:", "https:"].includes(u.protocol)) return false;
+        return SUPPORTED_DOMAINS.some(d => u.hostname.includes(d));
+      } catch { return false; }
+    }
+
+    // =========================================================
+    // LOADING STATE
+    // =========================================================
+    function setLoading(loading) {
+      isLoading = loading;
+      downloadBtn.disabled = loading;
+      downloadBtn.classList.toggle("loading", loading);
+      urlInput.disabled  = loading;
+      pasteBtn.disabled  = loading;
+    }
+
+    // =========================================================
+    // SHOW RESULT CARD
+    // =========================================================
+    function showResult(data) {
+      resultTitle.textContent   = data.title    || "Untitled Video";
+      resultFormat.textContent  = `🎞 ${(data.format || "—").toUpperCase()}`;
+      resultDuration.textContent = data.duration ? `⏱ ${data.duration}` : "";
+
+      if (data.thumbnail) {
+        resultThumb.src              = data.thumbnail;
+        resultThumb.style.display    = "block";
+        thumbPlaceholder.style.display = "none";
+        resultThumb.onerror = () => {
+          resultThumb.style.display    = "none";
+          thumbPlaceholder.style.display = "flex";
+        };
+      } else {
+        resultThumb.style.display    = "none";
+        thumbPlaceholder.style.display = "flex";
+      }
+
+      resultCard.classList.add("visible");
+    }
+
+    function hideResult() {
+      resultCard.classList.remove("visible");
+    }
+
+    // =========================================================
+    // TRIGGER BROWSER DOWNLOAD
+    // =========================================================
+    function triggerBrowserDownload(url, filename) {
+      const a = document.createElement("a");
+      a.href     = url;
+      a.download = filename || "download";
+      a.target   = "_blank";
+      a.rel      = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // =========================================================
+    // FETCH KE BACKEND — POST /api/fetch
+    // =========================================================
+    async function fetchDownloadLink(url, format) {
+      const controller = new AbortController();
+      const timeoutId  = setTimeout(() => controller.abort(), 35000); // 35 detik
+
+      try {
+        const response = await fetch(`${API_BASE}/api/fetch`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ url, format }),
+          signal:  controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          // FastAPI mengembalikan error di field "detail"
+          throw new Error(data.detail || data.error || `Server error ${response.status}`);
+        }
+
+        return data;
+
+      } catch (err) {
+        clearTimeout(timeoutId);
+
+        if (err.name === "AbortError") {
+          throw new Error("Request timeout. Server terlalu lama merespons. Coba lagi.");
+        }
+        if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+          const target = API_BASE || "http://localhost:5000";
+          throw new Error(`Tidak bisa terhubung ke backend. Jalankan: python app.py\n(Target: ${target})`);
+        }
+        throw err;
+      }
+    }
+
+    // =========================================================
+    // MAIN DOWNLOAD HANDLER
+    // =========================================================
+    async function handleDownload() {
+      if (isLoading) return;
+
+      const url = urlInput.value.trim();
+
+      if (!url) {
+        showToast("warning", "URL Kosong", "Masukkan URL video terlebih dahulu.");
+        urlInput.focus();
+        return;
+      }
+
+      if (!isValidClientUrl(url)) {
+        showToast("error", "URL Tidak Valid", "URL tidak dikenali. Pastikan dari platform yang didukung.");
+        urlInput.focus();
+        return;
+      }
+
+      hideResult();
+      setLoading(true);
+      startProgress();
+
+      try {
+        const data = await fetchDownloadLink(url, selectedFormat);
+
+        finishProgress(true);
+        showResult(data);
+
+        // Trigger download: download_url bisa berupa path "/stream/{id}"
+        // atau URL absolut. Tambahkan API_BASE jika path relatif
+        const downloadUrl = data.download_url.startsWith("http")
+          ? data.download_url
+          : `${API_BASE || "http://localhost:5000"}${data.download_url}`;
+
+        triggerBrowserDownload(downloadUrl, data.filename);
+
+        showToast("success", "Download Dimulai! 🎉",
+          `"${(data.title || "File").substring(0, 40)}" sedang didownload.`);
+
+      } catch (err) {
+        finishProgress(false);
+        hideResult();
+
+        let errorTitle = "Download Gagal";
+        let errorMsg   = err.message;
+
+        if (errorMsg.includes("backend") || errorMsg.includes("app.py") || errorMsg.includes("terhubung")) {
+          errorTitle = "Server Tidak Aktif";
+        } else if (errorMsg.includes("429") || errorMsg.includes("banyak")) {
+          errorTitle = "Rate Limit";
+        } else if (errorMsg.includes("timeout") || errorMsg.includes("Timeout")) {
+          errorTitle = "Timeout";
+        } else if (errorMsg.includes("private") || errorMsg.includes("restricted")) {
+          errorTitle = "Video Tidak Bisa Diakses";
+        }
+
+        showToast("error", errorTitle, errorMsg);
+
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // =========================================================
+    // EVENT LISTENERS
+    // =========================================================
+    downloadBtn.addEventListener("click", handleDownload);
+    urlInput.addEventListener("keydown", (e) => { if (e.key === "Enter") handleDownload(); });
+
+    urlInput.addEventListener("focus", async () => {
+      if (urlInput.value) return;
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text.startsWith("http") && isValidClientUrl(text)) {
+          urlInput.value = text.trim();
+        }
+      } catch { /* Clipboard mungkin belum di-grant */ }
+    });
+
+    // =========================================================
+    // TOAST NOTIFICATION SYSTEM
+    // =========================================================
+    const toastContainer = document.getElementById("toast-container");
+
+    function showToast(type, title, message, duration = 4500) {
+      const iconMap = {
+        success: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`,
+        error:   `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+        warning: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round"><path d="m10.29 3.86-8.16 14.14a1 1 0 0 0 .86 1.5h16.6a1 1 0 0 0 .86-1.5L12.71 3.86a1 1 0 0 0-1.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+      };
+
+      const toast = document.createElement("div");
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `
+        <div class="toast-icon">${iconMap[type] || iconMap.success}</div>
+        <div class="toast-body">
+          <div class="toast-title">${title}</div>
+          <div class="toast-msg">${message}</div>
+        </div>
+      `;
+
+      toastContainer.appendChild(toast);
+
+      const remove = () => {
+        toast.classList.add("removing");
+        toast.addEventListener("animationend", () => toast.remove(), { once: true });
+      };
+
+      toast.addEventListener("click", remove);
+      setTimeout(remove, duration);
+    }
+
+  </script>
+</body>
+</html>
